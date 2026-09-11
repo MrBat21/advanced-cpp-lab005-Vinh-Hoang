@@ -1,0 +1,29 @@
+name: Algorithm Analysis Lab Autograde
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Configure project
+        run: cmake -S . -B build
+
+      - name: Build project
+        run: cmake --build build
+
+      - name: Run correctness tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Run small benchmark sanity check
+        run: ./build/benchmark_app 1000 10
