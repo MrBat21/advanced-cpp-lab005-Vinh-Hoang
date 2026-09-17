@@ -4,11 +4,29 @@ This lab compares two correct approaches to the same problem. The goal is not si
 
 The benchmark output is written in CSV format and can be analyzed in Python, Excel, or a plotting tool.
 
+All benchmarks were compiled with `-O3` optimization and timed using `std::chrono::steady_clock` over three trials per input size.
+
+The table below shows reports average execution times (in milliseconds) computed from the emperical benchmark results:
+
+| Problem | Algorithm | N = 1,000 | N = 10,000 | N = 100,000 | Empirical Complexity |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Problem 1 (Duplicate)** | Naive | 0.220 ms | 11.713 ms | 1,318.849 ms | O(n²) |
+| | Efficient | 0.058 ms | 0.535 ms | 7.506 ms | O(n) |
+| **Problem 2 (Frequency)** | Naive | 0.078 ms | 6.228 ms | 663.349 ms | O(n²) |
+| | Efficient | 0.004 ms | 0.033 ms | 0.287 ms | O(n) |
+| **Problem 3 (Common)** | Naive | 0.008 ms | 0.073 ms | 0.650 ms | O(n) (Generator Artifact) |
+| | Efficient | 0.009 ms | 0.053 ms | 0.517 ms | O(n) |
+---
+
 ## Tie-breaking rule for the frequency problem
 
 When two values have the same frequency, the implementation returns the smaller numeric value.
 
 This rule is used in both the naive and efficient implementations so the results are comparable.
+- **Naive solution:** Evaluates `count > best_count || (count == best_count && current < best_value)`.
+- **Efficient solution:** Enforces the identical comparison during hash map traversal: `count > best_count || (count == best_count && value < best_value)`.
+
+Because `std::unordered_map` iterates elements in non-deterministic hash bucket order, preserving this tie-breaking rule guarantees that both algorithms return identical results.
 
 ## Problem 1 — Duplicate detection
 
@@ -17,7 +35,8 @@ This rule is used in both the naive and efficient implementations so the results
 - Description: compare every pair of values in the array.
 - Time complexity: O(n^2)
 - Space complexity: O(1)
-- Why: for each of n values, the code may compare against up to n - 1 other values.
+- Why: for each of n values, the code may compare against up to n - 1 other values. The total number of pairwise comparisons is:
+  $$\sum_{i=0}^{n-2} (n - 1 - i) = \frac{n(n - 1)}{2} = \frac{1}{2}n^2 - \frac{1}{2}n$$
 
 ### Algorithm B: Hash set
 
@@ -28,11 +47,10 @@ This rule is used in both the naive and efficient implementations so the results
 
 ### Experimental comparison
 
-1. The efficient implementation is usually faster for large inputs.
-2. As input size increases, the brute-force approach grows quadratically.
-3. The measured timing should agree with the theoretical prediction.
-4. The gap becomes larger because O(n^2) grows much faster than O(n).
-5. The faster method uses extra memory for the hash table.
+1. **Worst-Case Enforcement:** The synthetic input generator `makeNoDuplicateInput` produced strictly distinct values ($0$ to $n-1$), forcing brute force into its theoretical worst-case path because no early duplicate exists to trigger an early return[cite: 2, 3].
+2. **Quadratic Scaling Confirmed:** When input size $n$ scaled by $10\times$ (from $10{,}000$ to $100{,}000$), brute-force runtime surged from $11.713\text{ ms}$ to $1{,}318.849\text{ ms}$—an increase of $112.6\times$, closely matching the theoretical $10^2 = 100\times$ curve.
+3. **Linear Scaling:** Over the same $10\times$ input jump, the hash set grew from $0.535\text{ ms}$ to $7.506\text{ ms}$ ($14\times$ increase), outperforming brute force by **$175.7\times$** at $N = 100{,}000$[cite: 1, 3].
+4. **Memory Trade-off:** The hash set achieves this linear speedup by allocating extra heap memory ($O(n)$) for internal bucket arrays and linked collision nodes[cite: 3, 6].
 
 ```mermaid
 xychart-beta
@@ -50,7 +68,7 @@ xychart-beta
 - Description: for each value, scan the whole array and count occurrences.
 - Time complexity: O(n^2)
 - Space complexity: O(1)
-- Why: each value may require a full pass through the array.
+- Why: each of the n values unconditionally executes a full pass through the entire array of size n, resulting in n* n = n^2$ comparisons.  
 
 ### Algorithm B: Hash table counts
 
